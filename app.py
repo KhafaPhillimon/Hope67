@@ -24,7 +24,17 @@ except ImportError as e:
             print("__init__.py MISSING in dashboard.")
     else:
         print("Dashboard directory NOT found.")
+        try:
+            items = os.listdir(BASE_DIR)
+            print(f"Directory contents of {BASE_DIR}: {items}")
+            # Check for case-insensitive matches
+            matches = [i for i in items if i.lower() == "dashboard"]
+            if matches:
+                print(f"Found case-insensitive matches: {matches}")
+        except Exception as ex:
+            print(f"Error listing directory: {ex}")
     raise e
+
 
 if __name__ == "__main__":
     # Import the Dash app instance for local running
