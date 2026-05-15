@@ -1,50 +1,47 @@
-import sys
+"""
+app.py – Main entry point for the WebLog Analytics Dashboard.
+Flattened structure for stable deployment.
+"""
+
 import os
+import sys
+import dash
+import dash_bootstrap_components as dbc
 
-# Ensure the project root directory is in sys.path
-# This allows 'from dashboard.app import server' to work regardless of how the app is started.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# Import flattened components
+from dash_layout import build_layout
+from dash_callbacks import register_callbacks
 
-try:
-    # Import the Flask server from the dashboard app
-    from dashboard.app import server as app
-except ImportError as e:
-    # Fallback/Debug for deployment environments
-    print(f"ImportError: {e}")
-    print(f"Python Path: {sys.path}")
-    print(f"Current Directory: {os.getcwd()}")
-    print(f"Base Directory: {BASE_DIR}")
-    if os.path.exists(os.path.join(BASE_DIR, "dashboard")):
-        print("Dashboard directory found.")
-        if os.path.exists(os.path.join(BASE_DIR, "dashboard", "__init__.py")):
-            print("__init__.py found in dashboard.")
-        else:
-            print("__init__.py MISSING in dashboard.")
-    else:
-        print("Dashboard directory NOT found.")
-        try:
-            items = os.listdir(BASE_DIR)
-            print(f"Directory contents of {BASE_DIR}: {items}")
-            
-            parent_dir = os.path.dirname(BASE_DIR)
-            if os.path.exists(parent_dir):
-                print(f"Directory contents of PARENT {parent_dir}: {os.listdir(parent_dir)}")
-            
-            # Check for case-insensitive matches
-            matches = [i for i in items if i.lower() == "dashboard"]
-            if matches:
-                print(f"Found case-insensitive matches: {matches}")
-        except Exception as ex:
-            print(f"Error listing directory: {ex}")
-    raise e
+# ─── App Initialisation ──────────────────────────────────────────────────────
+# Create the Dash instance
+dash_app = dash.Dash(
+    __name__,
+    external_stylesheets=[
+        dbc.themes.CYBORG,
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css",
+    ],
+    suppress_callback_exceptions=True,
+    eager_loading=True,
+    title="AI Analytics",
+    meta_tags=[
+        {"name": "viewport",
+         "content": "width=device-width, initial-scale=1"},
+        {"name": "description",
+         "content": "Interactive web server log analytics dashboard built with Dash."},
+    ],
+)
 
+# ─── Layout & Callbacks ──────────────────────────────────────────────────────
+dash_app.layout = build_layout()
+register_callbacks(dash_app)
 
+# ─── Gunicorn Deployment ─────────────────────────────────────────────────────
+# Expose the Flask server for Gunicorn
+# 'gunicorn app:app' will look for 'app' in this file
+app = dash_app.server
 
+# ─── Dev server ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Import the Dash app instance for local running
-    from dashboard.app import app as dash_app
     port = int(os.environ.get("PORT", 8050))
     dash_app.run(debug=True, host="0.0.0.0", port=port)
-
