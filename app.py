@@ -27,6 +27,11 @@ except ImportError as e:
         try:
             items = os.listdir(BASE_DIR)
             print(f"Directory contents of {BASE_DIR}: {items}")
+            
+            parent_dir = os.path.dirname(BASE_DIR)
+            if os.path.exists(parent_dir):
+                print(f"Directory contents of PARENT {parent_dir}: {os.listdir(parent_dir)}")
+            
             # Check for case-insensitive matches
             matches = [i for i in items if i.lower() == "dashboard"]
             if matches:
@@ -34,6 +39,7 @@ except ImportError as e:
         except Exception as ex:
             print(f"Error listing directory: {ex}")
     raise e
+
 
 
 if __name__ == "__main__":
