@@ -6,6 +6,7 @@ Each function accepts a filtered DataFrame and returns a go.Figure.
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
+from dash_layout import C
 
 # ─── Shared theme ────────────────────────────────────────────────────────────
 PALETTE = px.colors.qualitative.Bold
@@ -435,6 +436,3 @@ def _empty(title: str) -> go.Figure:
                           showarrow=False, font=dict(size=14, color="#6b7280"))],
     )
     return fig
-
-# Need to import colors from layout
-from dash_layout import C

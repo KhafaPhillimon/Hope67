@@ -55,7 +55,7 @@ def register_callbacks(app):
         return {"display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100vh", "position": "fixed", "width": "100%", "top": "0", "left": "0", "zIndex": "1000", "background": "#0a0b14"}, {"display": "none"}
 
 
-    # ── 2. Load Data (default button) ────────────────────────────────────────
+    # ── 2. Load Data (triggered by login or button) ──────────────────────────
     @app.callback(
         Output("store-full-data",  "data"),
         Output("filter-continent", "options"),
@@ -64,14 +64,26 @@ def register_callbacks(app):
         Output("filter-gender",    "options"),
         Output("filter-resource",  "options"),
         Input("btn-load-default",  "n_clicks"),
+        Input("auth-store", "data"),
         prevent_initial_call=False,
     )
-    def load_dataset(n_default):
-        df = None
+    def load_dataset(n_default, auth_data):
+        # Auto-load if logged in, or if button clicked
+        is_logged_in = auth_data and auth_data.get("is_logged_in")
+        
+        ctx = callback_context
+        triggered = ctx.triggered[0]["prop_id"] if ctx.triggered else ""
+
+        # If not logged in and not clicking the button, don't load
+        if not is_logged_in and "btn-load-default" not in triggered:
+            raise PreventUpdate
 
         try:
+            print(f"Loading dataset from {DEFAULT_CSV}...")
             df = load_data(DEFAULT_CSV)
-        except Exception:
+            print(f"Dataset loaded: {len(df)} rows.")
+        except Exception as e:
+            print(f"Failed to load dataset: {e}")
             raise PreventUpdate
 
         def to_opts(series):
@@ -85,6 +97,7 @@ def register_callbacks(app):
             to_opts(df["gender"]),
             to_opts(df["resource"]),
         )
+
 
     # ── 3. Apply Filters ──────────────────────────────────────────────────
     @app.callback(
@@ -169,22 +182,39 @@ def register_callbacks(app):
             return (e("Hour"), e("Indicators"), e("Gender"), e("Map"),
                     e("Weekly"), e("Monthly"), e("Trend"), e("Jobs"), e("Res"), e("Req"), e("Status"), [], [])
 
-        df = pd.read_json(io.StringIO(data_json), orient="split")
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
-        df["date"] = df["timestamp"].dt.date
-        
-        return (
-            charts.requests_per_hour(df),
-            charts.sales_indicators_chart(df),
-            charts.demographics_chart(df, kpi_column='scheduled_demos', demo_column='gender'),
-            charts.global_map(df),
-            charts.weekly_traffic(df),
-            charts.monthly_traffic(df),
-            charts.requests_over_time(df),
-            charts.job_types_chart(df),
-            charts.top_resources(df),
-            charts.request_type_distribution(df),
-            charts.status_distribution(df),
-            df.to_dict("records"),
-            [{"name": i, "id": i} for i in df.columns if i != "timestamp_iso"] # Exclude internal columns if any
-        )
+        try:
+            # Read JSON with orient="split" to match how it was written
+            df = pd.read_json(io.StringIO(data_json), orient="split")
+            
+            if df.empty:
+                return (charts._empty("No matching data"),) * 11 + ([], [])
+
+            # Note: dash_loader.process_data already added 'hour', 'date', 'week', 'month'
+            # We just ensure timestamp is datetime if read_json didn't do it automatically
+            if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
+            
+            return (
+                charts.requests_per_hour(df),
+                charts.sales_indicators_chart(df),
+                charts.demographics_chart(df, kpi_column='scheduled_demos', demo_column='gender'),
+                charts.global_map(df),
+                charts.weekly_traffic(df),
+                charts.monthly_traffic(df),
+                charts.requests_over_time(df),
+                charts.job_types_chart(df),
+                charts.top_resources(df),
+                charts.request_type_distribution(df),
+                charts.status_distribution(df),
+                df.to_dict("records"),
+                [{"name": i, "id": i} for i in df.columns if i not in ["timestamp_iso", "date"]]
+            )
+        except Exception as ex:
+            print(f"CRITICAL ERROR in update_charts: {ex}")
+            import traceback
+            traceback.print_exc()
+            e = charts._empty
+            return (e(f"Render Error: {str(ex)}"),) * 11 + ([], [])
+
+
+

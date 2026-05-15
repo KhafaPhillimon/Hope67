@@ -149,6 +149,7 @@ def build_layout() -> html.Div:
                     dbc.Row([
                         # ── LEFT SIDEBAR: Filters ─────────────────────
                         dbc.Col(width=12, lg=3, children=[
+                            # 1. Data Control Card
                             html.Div([
                                 html.Div([
                                     html.I(className="fa-solid fa-database", style={"marginRight": "7px", "color": C["accent"]}),
@@ -157,9 +158,11 @@ def build_layout() -> html.Div:
                                 html.Button("Load Fresh Dataset", id="btn-load-default", n_clicks=0, style={
                                     "width": "100%", "background": C["accent"], "color": "white", "border": "none", "borderRadius": "8px", "padding": "12px", "fontWeight": "700", "fontSize": "13px"
                                 }),
-                            ], style=CARD_STYLE),
+                            ], style={**CARD_STYLE, "marginBottom": "20px"}),
 
+                            # 2. Global Filters Card
                             html.Div([
+
                                 html.Div([
                                     html.I(className="fa-solid fa-sliders", style={"marginRight": "7px", "color": C["accent"]}),
                                     "Global Filters"

@@ -43,21 +43,25 @@ def process_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # ── timestamp ──────────────────────────────────────────────────────────
     if "timestamp" in df.columns:
+        # Explicitly convert to datetime and drop invalid rows
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-        df.dropna(subset=["timestamp"], inplace=True)
+        df = df.dropna(subset=["timestamp"])
+        
+        # Pre-calculate common time features to avoid repeated computation in charts
         df["hour"] = df["timestamp"].dt.hour
         df["day"]  = df["timestamp"].dt.day_name()
         df["date"] = df["timestamp"].dt.date
-        df["week"] = df["timestamp"].dt.isocalendar().week
+        df["week"] = df["timestamp"].dt.isocalendar().week.astype(int)
         df["month"] = df["timestamp"].dt.month_name()
 
     # ── numerics ───────────────────────────────────────────────────────────
-    for col in ["status_code", "response_size", "response_time", "hour", "age", "is_error"]:
+    for col in ["status_code", "response_size", "response_time", "age", "is_error"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # ── derived ────────────────────────────────────────────────────────────
-    df["is_error"] = (df["status_code"] >= 400).astype(int)
+    if "status_code" in df.columns:
+        df["is_error"] = (df["status_code"] >= 400).astype(int)
 
     # ── strings ────────────────────────────────────────────────────────────
     string_cols = [
@@ -68,9 +72,14 @@ def process_data(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().replace("nan", "")
 
-    df.dropna(subset=["status_code", "response_time", "response_size"], inplace=True)
+    # Final cleanup of essential numeric columns
+    essential_cols = [c for c in ["status_code", "response_time", "response_size"] if c in df.columns]
+    if essential_cols:
+        df = df.dropna(subset=essential_cols)
+        
     df.reset_index(drop=True, inplace=True)
     return df
+
 
 
 # ─── Statistics ──────────────────────────────────────────────────────────────
